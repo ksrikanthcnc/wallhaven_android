@@ -8,10 +8,8 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
 import android.os.AsyncTask
 import android.os.Bundle
-import android.os.Environment
 import android.os.Handler
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
@@ -29,8 +27,6 @@ import com.wallhaven.MainActivity.Companion.logText
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
-import java.io.FileOutputStream
-import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -43,6 +39,7 @@ var run: Boolean = false
 var isSetting: Boolean = false
 val mutex: Semaphore = Semaphore(1, true)
 var refreshTime: Long = 10
+var oldRefreshTime: Long = 10
 var timerTime: Long = 1000
 var starttime: Long = 0
 
@@ -51,13 +48,14 @@ var context: Context? = null
 var refresher: Runnable = object : Runnable {
     override fun run() {
         changeWallpaper()
+        oldRefreshTime = refreshTime
         starttime = System.nanoTime()
         handler.postDelayed(this, refreshTime * 1000)
     }
 }
 var timerer: Runnable = object : Runnable {
     override fun run() {
-        timer!!.text = (refreshTime - (System.nanoTime() - starttime) / 1000000000).toString()
+        timer!!.text = (oldRefreshTime - (System.nanoTime() - starttime) / 1000000000).toString()
         handler.postDelayed(this, timerTime)
     }
 }
