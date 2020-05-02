@@ -1,0 +1,46 @@
+<resources>
+    <string-array name="categoriestext">
+        <item>general</item>
+        <item>anime</item>
+        <item>people</item>
+    </string-array>
+
+    <string-array name="categories">
+        <item>general</item>
+        <item>anime</item>
+        <item>people</item>
+    </string-array>
+
+    <string-array name="puritytext">
+        <item>sfw</item>
+        <item>sketchy</item>
+        <item>nsfw</item>
+    </string-array>
+
+    <string-array name="purity">
+        <item>sfw</item>
+        <item>sketchy</item>
+        <item>nsfw</item>
+    </string-array>
+
+    <string-array name="timestext">
+        <item>1sec</item>
+        <item>15sec</item>
+        <item>5min</item>
+        <item>15min</item>
+        <item>30min</item>
+        <item>1hr</item>
+        <item>6hr</item>
+    </string-array>
+
+    <string-array name="times">
+        <item>1</item>
+        <item>15</item>
+        <item>300</item>
+        <item>900</item>
+        <item>1800</item>
+        <item>3600</item>
+        <item>21600</item>
+    </string-array>
+
+</resources>
