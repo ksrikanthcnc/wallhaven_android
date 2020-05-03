@@ -1,9 +1,35 @@
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory app:title="Config">
+    <PreferenceCategory app:title="APP">
         <SwitchPreferenceCompat
             app:key="run"
             app:title="Use Wall haven" />
+        <MultiSelectListPreference
+            app:entries="@array/wheretexts"
+            app:entryValues="@array/where"
+            app:key="where"
+            app:title="Where to apply" />
+        <ListPreference
+            app:entries="@array/timestext"
+            app:entryValues="@array/times"
+            app:key="time"
+            app:title="Refresh Rate" />
+        <SeekBarPreference
+            app:key="blur"
+            app:title="Blur" />
+        <SeekBarPreference
+            app:key="dim"
+            app:title="Dim" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Config">
+        <EditTextPreference
+            app:dialogMessage="any combo of '+lotr -got @user type:{png/jpg} like:wallpaperID' or 'id:123'"
+            app:dialogTitle="Search"
+            app:key="search"
+            app:title="Search" />
+
         <MultiSelectListPreference
             app:entries="@array/categoriestext"
             app:entryValues="@array/categories"
@@ -14,10 +40,51 @@
             app:entryValues="@array/purity"
             app:key="purity"
             app:title="Purity" />
+        <MultiSelectListPreference
+            app:entries="@array/sortingtext"
+            app:entryValues="@array/sorting"
+            app:key="sorting"
+            app:title="Sorting (If multiple selected, one will be picked by random)" />
+
         <ListPreference
-            app:entries="@array/timestext"
-            app:entryValues="@array/times"
-            app:key="time"
-            app:title="Refresh Rate" />
+            app:entries="@array/ordertext"
+            app:entryValues="@array/order"
+            app:key="order"
+            app:title="Order" />
+        <ListPreference
+            app:dialogMessage="Works only with TopRange Sorting method"
+            app:entries="@array/toprangetext"
+            app:entryValues="@array/toprange"
+            app:key="toprange"
+            app:title="Top range" />
+
+        <EditTextPreference
+            android:dialogMessage="eg: '1920x1080'"
+            app:key="atleast"
+            app:title="Minimum Resolution" />
+        <EditTextPreference
+            android:dialogMessage="Comma separated (eg '1920x1080,1920x1200')"
+            app:key="resolutions"
+            app:title="Resolution(s)" />
+        <EditTextPreference
+            android:dialogMessage="Comma separated (eg '16x9,16x10')"
+            app:key="ratios"
+            app:title="Ratio(s)" />
+        <EditTextPreference
+            android:dialogMessage="Color code (eg 'fc4123')"
+            app:key="color"
+            app:title="Color" />
+        <EditTextPreference
+            android:dialogMessage="(eg '1' or '20')"
+            app:key="page"
+            app:title="Page" />
+        <EditTextPreference
+            android:dialogMessage="Seed for random (a-zA-Z0-9){6} (eg 'asG4Ky')"
+            app:key="seed"
+            app:title="Seed (for random)(optional)" />
+        <EditTextPreference
+            android:dialogMessage="Get from wallhaven.cc/settings/account"
+            app:key="apikey"
+            app:title="API-KEY (must for NSFW)" />
     </PreferenceCategory>
 </PreferenceScreen>

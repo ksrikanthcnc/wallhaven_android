@@ -24,10 +24,32 @@
         android:onClick="btn"
         android:text="start"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/clear"
+        app:layout_constraintEnd_toStartOf="@+id/refresh"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="btn"
+        android:text="refresh"
+        app:layout_constraintBaseline_toBaselineOf="@+id/start"
+        app:layout_constraintEnd_toStartOf="@+id/cache"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/start" />
+
+    <Button
+        android:id="@+id/cache"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="btn"
+        android:text="cache"
+        app:layout_constraintBaseline_toBaselineOf="@+id/refresh"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/refresh" />
 
     <Button
         android:id="@+id/clear"
@@ -35,10 +57,9 @@
         android:layout_height="wrap_content"
         android:onClick="btn"
         android:text="Clear log"
-        app:layout_constraintBaseline_toBaselineOf="@+id/start"
+        app:layout_constraintBaseline_toBaselineOf="@+id/settings"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/start" />
+        app:layout_constraintStart_toEndOf="@+id/settings" />
 
     <ImageView
         android:id="@+id/img"
@@ -63,7 +84,7 @@
         app:layout_constraintBottom_toTopOf="@id/settings"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/start" />
+        app:layout_constraintTop_toBottomOf="@+id/url" />
 
     <TextView
         android:id="@+id/timer"
@@ -72,4 +93,13 @@
         android:text="TIMER"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/url"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="URL"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/start" />
 </androidx.constraintlayout.widget.ConstraintLayout>

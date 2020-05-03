@@ -1,10 +1,18 @@
 <resources>
-    <string-array name="categoriestext">
-        <item>general</item>
-        <item>anime</item>
-        <item>people</item>
+    <string-array name="wheretexts">
+        <item>Home Screen</item>
+        <item>Lock Screen</item>
+    </string-array>
+    <string-array name="where">
+        <item>home</item>
+        <item>lock</item>
     </string-array>
 
+    <string-array name="categoriestext">
+        <item>General</item>
+        <item>Anime</item>
+        <item>People</item>
+    </string-array>
     <string-array name="categories">
         <item>general</item>
         <item>anime</item>
@@ -12,15 +20,14 @@
     </string-array>
 
     <string-array name="puritytext">
-        <item>sfw</item>
-        <item>sketchy</item>
-        <item>nsfw</item>
+        <item>[SFW]Safe For Work)</item>
+        <item>Sketchy</item>
+        <!--        <item>[NSFW]Not Safe For Work(needs API KEY)</item>-->
     </string-array>
-
     <string-array name="purity">
         <item>sfw</item>
         <item>sketchy</item>
-        <item>nsfw</item>
+        <!--        <item>nsfw</item>-->
     </string-array>
 
     <string-array name="timestext">
@@ -32,7 +39,6 @@
         <item>1hr</item>
         <item>6hr</item>
     </string-array>
-
     <string-array name="times">
         <item>1</item>
         <item>15</item>
@@ -41,6 +47,51 @@
         <item>1800</item>
         <item>3600</item>
         <item>21600</item>
+    </string-array>
+
+    <string-array name="sortingtext">
+        <item>Date Added</item>
+        <item>Relevance</item>
+        <item>Random</item>
+        <item>Views</item>
+        <item>Favorites</item>
+        <item>Top List</item>
+    </string-array>
+    <string-array name="sorting">
+        <item>date_added</item>
+        <item>relevance</item>
+        <item>random</item>
+        <item>views</item>
+        <item>favorites</item>
+        <item>toplist</item>
+    </string-array>
+
+    <string-array name="ordertext">
+        <item>Descending</item>
+        <item>Ascending</item>
+    </string-array>
+    <string-array name="order">
+        <item>desc</item>
+        <item>asc</item>
+    </string-array>
+
+    <string-array name="toprangetext">
+        <item>1 Day</item>
+        <item>3 Day</item>
+        <item>1 Week</item>
+        <item>1 Month</item>
+        <item>3 Month</item>
+        <item>6 Month</item>
+        <item>1 Year</item>
+    </string-array>
+    <string-array name="toprange">
+        <item>1d</item>
+        <item>3d</item>
+        <item>1w</item>
+        <item>1M</item>
+        <item>3M</item>
+        <item>6M</item>
+        <item>1y</item>
     </string-array>
 
 </resources>

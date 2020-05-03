@@ -1,151 +1,131 @@
 package com.wallhaven
 
-import android.Manifest
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.AsyncTask
 import android.os.Bundle
 import android.os.Handler
 import android.text.method.ScrollingMovementMethod
-import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
+import com.wallhaven.Functions.Companion.getPerm
+import com.wallhaven.Functions.Companion.logText
+import com.wallhaven.Functions.Companion.t
 import com.wallhaven.MainActivity.Companion.changeWallpaper
-import com.wallhaven.MainActivity.Companion.logText
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
+import java.lang.Exception
 import java.util.*
-import java.util.concurrent.Semaphore
-import kotlin.collections.ArrayList
 
-const val API: String = "https://wallhaven.cc/api/v1/search?"
+//todo dont clear log
+//todo nsfw (api issue)
+//todo fix->log goes to bottom to each tick
+//todo long press download, tap open in chrome
+//todo about help, log, list
+//todo user
+//todo service background
+//todo seed isnt working
+//todo enhance api check page, seed, ...
+//todo get settings with api, collections
+//todo add effects
+//todo start refresher after setwallpaper
+//todo sleep if not used
+//todo If not scrollable shrink to phone dimensions
+//todo show pref in summary
+//todo canvas:trying to draw too large exception
+
 var run: Boolean = false
-var isSetting: Boolean = false
-val mutex: Semaphore = Semaphore(1, true)
-var refreshTime: Long = 10
-var oldRefreshTime: Long = 10
+var refreshTime: Long = 300
+var oldRefreshTime: Long = refreshTime
 var timerTime: Long = 1000
 var starttime: Long = 0
 
 var handler: Handler = Handler()
 var context: Context? = null
-var refresher: Runnable = object : Runnable {
-    override fun run() {
+var refresher: Runnable = Runnable {
+    oldRefreshTime = refreshTime
+    starttime = System.nanoTime()
+    try {
         changeWallpaper()
-        oldRefreshTime = refreshTime
-        starttime = System.nanoTime()
-        handler.postDelayed(this, refreshTime * 1000)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        t(e.javaClass.name)
     }
 }
-var timerer: Runnable = object : Runnable {
+var refreshTimer: Runnable = object : Runnable {
     override fun run() {
         timer!!.text = (oldRefreshTime - (System.nanoTime() - starttime) / 1000000000).toString()
         handler.postDelayed(this, timerTime)
     }
 }
 var img: ImageView? = null
-var text: TextView? = null
+var logTextView: TextView? = null
 var timer: TextView? = null
-
-var general: Boolean? = null
-var anime: Boolean? = null
-var people: Boolean? = null
-var categories: String? = null
-var sfw: Boolean? = null
-var sketchy: Boolean? = null
-var nsfw: Boolean? = null
-var purity: String? = null
 
 var wallpaperManager: WallpaperManager? = null
 var sharedPreferences: SharedPreferences? = null
-var log: String = ""
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                1
-            )
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                2
-            )
-        }
+//todo  Intent(this, WallhavenService::class.java).also { intent -> startService(intent) }
+        getPerm(this)
+        initVar()
+        logTextView!!.movementMethod = ScrollingMovementMethod()
+        img!!.setImageDrawable(wallpaperManager!!.drawable)
 
-        context = applicationContext
-        wallpaperManager = WallpaperManager.getInstance(context)
-        img = findViewById(R.id.img)
-        text = findViewById(R.id.text)
-        text!!.movementMethod = ScrollingMovementMethod()
-        timer = findViewById(R.id.timer)
-        sharedPreferences = getDefaultSharedPreferences(context)
-
-        img?.setImageDrawable(wallpaperManager!!.drawable)
         run = sharedPreferences!!.getBoolean("run", false)
         if (run) {
             findViewById<Button>(R.id.start).text = "(Running)STOP"
             if (!handler.hasCallbacks(refresher))
                 handler.post(refresher)
-            handler.post(timerer)
+            if (!handler.hasCallbacks(refreshTimer))
+                handler.post(refreshTimer)
         } else {
             findViewById<Button>(R.id.start).text = "(Stopped)START"
-            handler.removeCallbacks(timerer)
+            handler.removeCallbacks(refreshTimer)
             handler.removeCallbacks(refresher)
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        val param = getParam()
-        logText("$param($refreshTime s)")
+    private fun initVar() {
+        context = applicationContext
+        wallpaperManager = WallpaperManager.getInstance(context)
+        sharedPreferences = getDefaultSharedPreferences(context)
+        img = findViewById(R.id.img)
+        timer = findViewById(R.id.timer)
+        logTextView = findViewById(R.id.text)
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>, grantResults: IntArray
-    ) {
+    override fun onResume() {
+        super.onResume()
+        val url = API().getURL()
+        findViewById<TextView>(R.id.url).text = "$url($refreshTime s)"
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
             1 -> {
                 if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    logText("Read Permission Given")
+                    logText("Read Permission Given", logTextView)
                 } else {
-                    logText("Read Permission Denied")
+                    logText("Read Permission Denied", logTextView)
                 }
                 return
             }
             2 -> {
                 if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    logText("Write Permission Given")
+                    logText("Write Permission Given", logTextView)
                 } else {
-                    logText("Write Permission Denied")
+                    logText("Write Permission Denied", logTextView)
                 }
                 return
             }
@@ -154,55 +134,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     companion object {
-        private fun Boolean.toInt() = if (this) '1' else '0'
-        fun logText(new: String) {
-            val file = Thread.currentThread().stackTrace[3].fileName
-//            val classname = Thread.currentThread().stackTrace[3].className
-            val method = Thread.currentThread().stackTrace[3].methodName
-            val line = Thread.currentThread().stackTrace[3].lineNumber
-            val str = "[$file][$method($line)]:[$new]"
-            Log.d("[LoggingText]", str)
-
-            val msg = "[$new]\n"
-            try {
-                text!!.append(msg)
-            } catch (e: java.lang.Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        fun getParam(): String {
-            //todo add more params
-            general =
-                sharedPreferences!!.getStringSet("categories", hashSetOf())?.contains("general")
-            anime = sharedPreferences!!.getStringSet("categories", hashSetOf())?.contains("anime")
-            people = sharedPreferences!!.getStringSet("categories", hashSetOf())?.contains("people")
-            categories = "&categories=" + general!!.toInt() + anime!!.toInt() + people!!.toInt()
-
-            sfw = sharedPreferences!!.getStringSet("purity", hashSetOf())?.contains("sfw")
-            sketchy = sharedPreferences!!.getStringSet("purity", hashSetOf())?.contains("sketchy")
-            nsfw = sharedPreferences!!.getStringSet("purity", hashSetOf())?.contains("nsfw")
-            purity = "&purity=" + sfw!!.toInt() + sketchy!!.toInt() + false.toInt()
-
-            val param = "$categories$purity&sorting=random"
-            refreshTime = sharedPreferences!!.getString("time", "300")!!.toLong()
-            return param
+        fun setWallpaper(home: Bitmap?, lock: Bitmap?) {
+            logText("Setting wallpaper", logTextView)
+            Functions.SetWallpaper(home, lock).execute()
         }
 
         fun changeWallpaper() {
-            val param = getParam()
+            val param = API().getURL()
             if (run)
                 if (isSetting) {
                     val msg = "Already applying one"
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 } else {
-                    logText(
-                        "----" + (Calendar.getInstance() as GregorianCalendar).toZonedDateTime()
-                            .toLocalTime() + "----"
-                    )
-                    GetJSON(param).execute()
+                    logText("----" + (Calendar.getInstance() as GregorianCalendar).toZonedDateTime().toLocalTime() + "----", logTextView)
+                    API().getSet(param)
                 }
         }
     }
@@ -219,108 +165,31 @@ class MainActivity : AppCompatActivity() {
                 if (run) {
                     findViewById<Button>(R.id.start).text = "(Running)STOP"
                     handler.post(refresher)
-                    handler.post(timerer)
+                    handler.post(refreshTimer)
                 } else {
                     findViewById<Button>(R.id.start).text = "(Stopped)START"
-                    handler.removeCallbacks(timerer)
+                    handler.removeCallbacks(refreshTimer)
                     handler.removeCallbacks(refresher)
                 }
             }
             R.id.clear -> {
-                log = ""
-                text!!.text = log
+                logTextView!!.text = ""
             }
             R.id.img -> {
                 //todo download to downloads folder
             }
-        }
-    }
-}
-
-class GetJSON(private var param: String) :
-    AsyncTask<Void?, Void?, String?>() {
-    override fun onPreExecute() {
-        mutex.acquire()
-        isSetting = true
-        logText("JSON[$API$param]")
-    }
-
-    override fun doInBackground(vararg urls: Void?): String? {
-        return try {
-            val url = URL(API + param)
-            log += "JSON[$url]"
-            val urlConnection: HttpURLConnection = url.openConnection() as HttpURLConnection
-            urlConnection.requestMethod = "GET"
-            urlConnection.doOutput = false
-            urlConnection.connect()
-            try {
-                val bufferedReader =
-                    BufferedReader(InputStreamReader(urlConnection.inputStream))
-                val stringBuilder = StringBuilder()
-                var line: String?
-                while (bufferedReader.readLine().also { line = it } != null) {
-                    stringBuilder.append(line).append("\n")
-                }
-                bufferedReader.close()
-                stringBuilder.toString()
-            } finally {
-                urlConnection.disconnect()
+            R.id.cache -> {
+                //todo
             }
-        } catch (e: Exception) {
-            logText(e.message.toString())
-            null
-        }
-    }
-
-    override fun onPostExecute(response: String?) {
-        if (response != null) {
-            val json = JSONObject(response)
-            val data = json.get("data") as JSONArray
-            val all = ArrayList<String>()
-            for (i in 0..json.length()) {
-                val obj = data.get(i) as JSONObject
-                val path = obj.get("path") as String
-                all.add(path)
+            R.id.refresh -> {
+                run = true
+                sharedPreferences!!.edit().putBoolean("run", run).apply()
+                findViewById<Button>(R.id.start).text = "(Running)STOP"
+                handler.removeCallbacks(refreshTimer)
+                handler.removeCallbacks(refresher)
+                handler.post(refresher)
+                handler.post(refreshTimer)
             }
-            val url: String = all[0]
-            GetIMG(url).execute()
         }
-    }
-}
-
-class GetIMG(private var uri: String) : AsyncTask<Void?, Void?, Bitmap?>() {
-    override fun onPreExecute() {
-        logText("Downloading[$uri]")
-    }
-
-    override fun doInBackground(vararg params: Void?): Bitmap? {
-        val url = URL(uri)
-        return try {
-            BitmapFactory.decodeStream(url.openConnection().getInputStream())
-            //todo blur effects
-        } catch (e: java.lang.Exception) {
-            logText(e.message.toString())
-            null
-        }
-    }
-
-    override fun onPostExecute(image: Bitmap?) {
-        if (image != null) {
-            SetWallpaper(image).execute()
-            img?.setImageBitmap(image)
-        }
-        isSetting = false
-        mutex.release()
-    }
-}
-
-class SetWallpaper(private val image: Bitmap?) : AsyncTask<Void?, Void?, Void?>() {
-    override fun onPreExecute() {
-        logText("Setting wallpaper")
-    }
-
-    override fun doInBackground(vararg params: Void?): Void? {
-        wallpaperManager!!.setBitmap(image, null, false, WallpaperManager.FLAG_SYSTEM)
-        return null
     }
 }
