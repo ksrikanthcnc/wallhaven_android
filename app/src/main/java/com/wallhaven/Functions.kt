@@ -2,7 +2,9 @@ package com.wallhaven
 
 import android.Manifest
 import android.app.Activity
+import android.app.Application
 import android.app.WallpaperManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -10,6 +12,8 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.media.ThumbnailUtils
 import android.os.AsyncTask
+import android.os.Handler
+import android.os.Looper
 import android.renderscript.Allocation
 import android.renderscript.Element
 import android.renderscript.RenderScript
@@ -22,18 +26,45 @@ import androidx.core.content.ContextCompat
 import kotlin.math.min
 
 
+class MyApp : Application() {
+    override fun onCreate() {
+        instance = this
+        super.onCreate()
+    }
+
+    companion object {
+        var instance: MyApp? = null
+            private set
+
+        // or return instance.getApplicationContext();
+        val context: Context?
+            get() = instance
+        // or return instance.getApplicationContext();
+    }
+}
+
 class Functions {
     companion object {
+        const val dev: Boolean = false
         fun unsetting() {
             isSetting = false
             mutex.release()
-            t("Wallpaper(s) updated")
             handler.postDelayed(refresher, refreshTime * 1000)
         }
 
+        fun t(msg: String, dur: Int) {
+            l("[Toast][$msg]", 4)
+            Toast.makeText(MyApp.context, msg, dur).show()
+        }
+
         fun t(msg: String) {
-            l(msg, 4)
-            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            l("[Toast][$msg]", 4)
+//            Toast.makeText(MyApp.context, msg, Toast.LENGTH_LONG).show()
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            } else {
+                Handler(Looper.getMainLooper()).post(Runnable { Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() })
+            }
         }
 
         fun blur(image: Bitmap, blurBy: Float): Bitmap {
@@ -49,6 +80,7 @@ class Functions {
         }
 
         fun darkenBitMap(bitmap: Bitmap, dimBy: Int): Bitmap? {
+            //todo dim
             val canvas = Canvas(bitmap)
             canvas.drawARGB(dimBy, 0, 0, 0)
             canvas.drawBitmap(bitmap, Matrix(), Paint())
@@ -61,6 +93,7 @@ class Functions {
         }
 
         fun overlay(src: Bitmap, bg: Bitmap): Bitmap {
+            // if src==bg (optimization), Canvas throws immutable object error
             val final = Bitmap.createBitmap(bg)
             val canvas = Canvas(final)
             canvas.drawBitmap(src, (bg.width - src.width) / 2f, (bg.height - src.height) / 2f, null)
@@ -79,17 +112,18 @@ class Functions {
             Log.d("[LoggingText]", str)
         }
 
-        fun logText(log: String, text: TextView?) {
+        fun logText(toLog: String, text: TextView?) {
             val file = Thread.currentThread().stackTrace[3].fileName
 //            val classname = Thread.currentThread().stackTrace[3].className
             val method = Thread.currentThread().stackTrace[3].methodName
             val line = Thread.currentThread().stackTrace[3].lineNumber
-            val str = "[$file][$method($line)]:[$log]"
+            val str = "[$file][$method($line)]:[$toLog]"
             Log.d("[LoggingText]", str)
 
-            val msg = "[$log]\n"
+            log += "[$toLog]\n"
             try {
-                text!!.append(msg)
+                text!!.text = log
+                sharedPreferences!!.edit().putString("log", logTextView!!.text.toString()).apply()
             } catch (e: java.lang.Exception) {
                 e.printStackTrace()
             }

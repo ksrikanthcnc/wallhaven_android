@@ -52,11 +52,10 @@
             app:key="order"
             app:title="Order" />
         <ListPreference
-            app:dialogMessage="Works only with TopRange Sorting method"
             app:entries="@array/toprangetext"
             app:entryValues="@array/toprange"
             app:key="toprange"
-            app:title="Top range" />
+            app:title="Top range (Works only with TopRange Sorting method)" />
 
         <EditTextPreference
             android:dialogMessage="eg: '1920x1080'"
@@ -78,6 +77,10 @@
             android:dialogMessage="(eg '1' or '20')"
             app:key="page"
             app:title="Page" />
+        <EditTextPreference
+            android:dialogMessage="Image to select in current page (1-24)"
+            app:key="index"
+            app:title="Index" />
         <EditTextPreference
             android:dialogMessage="Seed for random (a-zA-Z0-9){6} (eg 'asG4Ky')"
             app:key="seed"
