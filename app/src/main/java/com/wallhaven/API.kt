@@ -3,7 +3,8 @@ package com.wallhaven
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.AsyncTask
-import com.wallhaven.Functions.Companion.dev
+import android.util.DisplayMetrics
+import com.wallhaven.Functions.Companion.jsonToString
 import com.wallhaven.Functions.Companion.logText
 import com.wallhaven.Functions.Companion.overlay
 import com.wallhaven.Functions.Companion.t
@@ -18,110 +19,122 @@ import java.net.URL
 import java.util.concurrent.Semaphore
 import kotlin.math.max
 
+
+//todo index [now]
 const val APIString: String = "https://wallhaven.cc/api/v1/search?"
 var isSetting: Boolean = false
 val mutex: Semaphore = Semaphore(1, true)
 
 class API {
-    fun getSet(jsonURL: JSONObject) {
-        AGetSet(jsonURL).execute()
-    }
-
     private fun Boolean.toInt() = if (this) '1' else '0'
     fun getURL(): JSONObject {
         val json = JSONObject()
 
-        val userSearch = sharedPreferences!!.getString("search", "")!!
         var search = ""
+        var categories = ""
+        var purity = ""
+        var sorting = ""
+        var order = ""
+        var toprange = ""
+        var atleast = ""
+        var resolutions = ""
+        var ratios = ""
+        var colors = ""
+        var page = ""
+        var seed = ""
+        var apikey = ""
+
+        val userSearch = sharedPreferences!!.getString("search", "")!!
         if (userSearch.isNotBlank()) {
             search = "&q=$userSearch"
         }
 
-        val categoriesSet = sharedPreferences!!.getStringSet("categories", hashSetOf())!!
+        val categoriesSet = sharedPreferences!!.getStringSet("categoriesset", hashSetOf())!!
         if (categoriesSet.isEmpty()) {
-            sharedPreferences!!.edit().putStringSet("categories", hashSetOf("general")).apply()
-            categoriesSet.add("general")
+            sharedPreferences!!.edit().putStringSet("categoriesset", hashSetOf("general")).apply()
+            sharedPreferences!!.edit().putStringSet("categoriesset", hashSetOf("anime")).apply()
+            sharedPreferences!!.edit().putStringSet("categoriesset", hashSetOf("people")).apply()
+//            categoriesSet.add("general")
+        } else {
+            val general = categoriesSet.contains("general")
+            val anime = categoriesSet.contains("anime")
+            val people = categoriesSet.contains("people")
+            categories = "&categories=" + general.toInt() + anime.toInt() + people.toInt()
         }
-        val general = categoriesSet.contains("general")
-        val anime = categoriesSet.contains("anime")
-        val people = categoriesSet.contains("people")
-        val categories = "&categories=" + general.toInt() + anime.toInt() + people.toInt()
 
-        val puritySet = sharedPreferences!!.getStringSet("purity", hashSetOf())!!
+        val puritySet = sharedPreferences!!.getStringSet("purityset", hashSetOf())!!
         if (puritySet.isEmpty()) {
-            sharedPreferences!!.edit().putStringSet("purity", hashSetOf("sfw")).apply()
+            sharedPreferences!!.edit().putStringSet("purityset", hashSetOf("sfw")).apply()
+            //Else API gives nsfw too (api bug)
             puritySet.add("sfw")
-        }
-        var sfw = puritySet.contains("sfw")
-        val sketchy = puritySet.contains("sketchy")
-        val nsfw = puritySet.contains("nsfw")
-        /* API issue, else fetching &purity=111 */
-        if (!dev)
-            if (!(sfw || sketchy || nsfw))
-                sfw = true
-        val purity = "&purity=" + sfw.toInt() + sketchy.toInt() + nsfw.toInt()
-
-        val sortingSet = sharedPreferences!!.getStringSet("sorting", hashSetOf())!!
-        if (sortingSet.isEmpty()) {
-            sharedPreferences!!.edit().putStringSet("sorting", hashSetOf("general")).apply()
-            sortingSet.add("date_added")
-        }
-        //todo remove default
-        var sorting = "&sorting=random"
-        if (sortingSet.isNotEmpty()) {
-            val randomSorter = sortingSet.shuffled().first()
-            sorting = "&sorting=$randomSorter"
+        } else {
+            val sfw = puritySet.contains("sfw")
+            val sketchy = puritySet.contains("sketchy")
+            val nsfw = puritySet.contains("nsfw")
+            purity = "&purity=" + sfw.toInt() + sketchy.toInt() + nsfw.toInt()
         }
 
-        var userOrder = sharedPreferences!!.getString("order", "")!!
+        val oldSortingSet = sharedPreferences!!.getStringSet("oldsortingset", hashSetOf())!!
+        val sortingSet = sharedPreferences!!.getStringSet("sortingset", hashSetOf())!!
+        if (sortingSet.size == 0 || oldSortingSet != sortingSet) {
+            sharedPreferences!!.edit().putStringSet("oldsortingset", sortingSet).apply()
+            if (sortingSet.isEmpty()) {
+                sharedPreferences!!.edit().putStringSet("sortingset", hashSetOf("date_added")).apply()
+//            sortingSet.add("date_added")
+            } else {
+                val randomSorter = sortingSet.shuffled().first()
+                if (randomSorter != "date_added") {
+                    sharedPreferences!!.edit().putString("sorting", randomSorter).apply()
+                    sorting = "&sorting=$randomSorter"
+                }
+            }
+        } else {
+            sorting = "&sorting=${sharedPreferences!!.getString("sorting", "")}"
+        }
+
+        val userOrder = sharedPreferences!!.getString("order", "")!!
         if (userOrder.isBlank()) {
             sharedPreferences!!.edit().putString("order", "desc").apply()
-            userOrder = "desc"
-        }
-        var order = ""
-        if (userOrder.isNotEmpty()) {
-            order = "&order=$userOrder"
+//            userOrder = "desc"
+        } else {
+            if (userOrder != "desc")
+                order = "&order=$userOrder"
         }
 
-        var userTopRange = sharedPreferences!!.getString("toprange", "")!!
-        if (userTopRange.isBlank()) {
-            sharedPreferences!!.edit().putString("toprange", "1M").apply()
-            userTopRange = "1M"
-        }
-        var toprange = ""
-        if (userTopRange.isNotEmpty()) {
-            toprange = "&topRange=$userTopRange"
+        if (sorting == "toplist") {
+            val userTopRange = sharedPreferences!!.getString("toprange", "")!!
+            if (userTopRange.isBlank()) {
+                sharedPreferences!!.edit().putString("toprange", "1M").apply()
+//            userTopRange = "1M"
+            } else {
+                if (userTopRange != "1M")
+                    toprange = "&topRange=$userTopRange"
+            }
         }
 
         val userMinRes = sharedPreferences!!.getString("atleast", "")!!
-        var atleast = ""
         if (userMinRes.isNotBlank()) {
             atleast = "&atleast=$userMinRes"
         }
 
         val userResolutions = sharedPreferences!!.getString("resolutions", "")!!
-        var resolutions = ""
         if (userResolutions.isNotBlank()) {
             resolutions = "&resolutions=$userResolutions"
         }
 
         val userRatios = sharedPreferences!!.getString("ratios", "")!!
-        var ratios = ""
         if (userRatios.isNotBlank()) {
             ratios = "&ratios=$userRatios"
         }
 
         val userColors = sharedPreferences!!.getString("colors", "")!!
-        var colors = ""
         if (userColors.isNotBlank()) {
             colors = "&colors=$userColors"
         }
 
-        val page: String
-        val sorter: String = if (sorting == "toplist")
-            "$sorting${sharedPreferences!!.getString("toprange", "1M")}"
-        else
-            sorting
+        var sorter = sharedPreferences!!.getString("sorting", "")
+        if (sorter == "toplist")
+            sorter += "${sharedPreferences!!.getString("toprange", "1M")}"
 
         val currentPage = sharedPreferences!!.getString("page", "1")
         page = "&page=$currentPage"
@@ -129,20 +142,20 @@ class API {
         val userIndex = sharedPreferences!!.getInt("index", 1)
         var index = userIndex
 
-        val userSeed = sharedPreferences!!.getString("ratios", "")!!
-        var seed = ""
-        if (userSeed.isNotBlank()) {
-            seed = "&seed=$userSeed"
+        if (sorter == "random") {
+            val userSeed = sharedPreferences!!.getString("seed", "")!!
+            if (userSeed.isNotBlank()) {
+                seed = "&seed=$userSeed"
+            }
         }
 
         val userAPIKEY = sharedPreferences!!.getString("apikey", "")!!
-        var apikey = ""
         if (userAPIKEY.isNotBlank()) {
             apikey = "&apikey=$userAPIKEY"
         }
 
-        val param = "$search$categories$purity$sorting$order$toprange$atleast$resolutions$ratios$colors$page$seed$apikey"
-        refreshTime = sharedPreferences!!.getString("time", "300")!!.toLong()
+//        val param = "$search$categories$purity$sorting$order$toprange$atleast$resolutions$ratios$colors$page$seed$apikey"
+        refreshTime = sharedPreferences!!.getString("refreshtime", "300")!!.toLong()
 
         //todo one liner using str replace
         json.put("API", APIString)
@@ -171,59 +184,47 @@ class API {
         }
 
         override fun doInBackground(vararg params: Void?): Bitmap? {
+            if (sharedPreferences!!.getBoolean("refreshpage", true)) {
+                logText("Refreshing cache(Param change detected)")
+                sharedPreferences!!.edit().putBoolean("refreshpage", false).apply()
+                sharedPreferences!!.edit().putStringSet("urls", hashSetOf()).apply()
+            }
             var urls = sharedPreferences!!.getStringSet("urls", hashSetOf())!!
             url = jsonToString(jsonURL)
             if (urls.isEmpty()) {
-                var msg = ""
+                val msg: String
                 val json = JSONObject(fetchJSONString(url)!!)
                 val meta = json.get("meta") as JSONObject
                 if (meta.get("total") == 0) {
-                    msg = "No images with given params"
+                    msg = "No images with given params...Stopping"
                     sharedPreferences!!.edit().putBoolean("run", false).apply()
                 } else {
+                    sharedPreferences!!.edit().putString("total", meta.get("total").toString()).apply()
                     msg = "Refreshing cache list"
-                    updatePage(json, jsonURL)
-                    val newUrl = jsonToString(jsonURL)
-                    val newJson = JSONObject(fetchJSONString(newUrl)!!)
-                    val newUrls = dataToUrls(newJson.get("data") as JSONArray)
+                    var newJson: JSONObject
+                    do {
+                        if (sharedPreferences!!.getBoolean("updatepage", true) && !sharedPreferences!!.getBoolean("refreshpage", true))
+                            updatePage(json, jsonURL)
+                        val newUrl = jsonToString(jsonURL)
+//                    logText(newUrl)
+                        newJson = JSONObject(fetchJSONString(newUrl)!!)
+                        if ((newJson.get("data") as JSONArray).length() == 0)
+                            sharedPreferences!!.edit().putBoolean("updatepage", true).apply()
+                    } while ((newJson.get("data") as JSONArray).length() == 0)
+                    val newUrls: Set<String> = dataToUrls(newJson.get("data") as JSONArray)
                     sharedPreferences!!.edit().putStringSet("urls", newUrls).apply()
                     urls = newUrls
                 }
                 t(msg)
+                logText(msg)
             }
-            val url = getFirstURL(urls)
-            val image: Bitmap? = getIMG(url)
-            return image
-        }
-
-        private fun getFirstURL(urls: Set<String>): String {
-            //todo don 't randomize
-            var url = ""
-            url = urls.first()
-            sharedPreferences!!.edit().putString("latest", "${jsonToString(jsonURL)}\n[$url]").apply()
-            sharedPreferences!!.edit().putStringSet("urls", urls.drop(1).toSet()).apply()
-            return url
-        }
-
-        private fun updatePage(json: JSONObject, jsonURL: JSONObject) {
-            val meta = json.get("meta") as JSONObject
-            val currentPage = meta.get("current_page")
-            var page = (currentPage as Int) + 1
-            val lastPage = meta.get("last_page") as Int
-            if (page > lastPage)
-                page = 1
-            jsonURL.put("page", "&page=$page")
-            sharedPreferences!!.edit().putString("page", page.toString()).apply()
-        }
-
-        fun dataToUrls(data: JSONArray): Set<String> {
-            val urls = ArrayList<String>()
-            for (i in 0 until data.length()) {
-                val obj = data.get(i) as JSONObject
-                val path = obj.get("path") as String
-                urls.add(path)
+            return if (urls.isNotEmpty()) {
+                val url = getFirstURL(urls)
+                val image: Bitmap? = getIMG(url)
+                image
+            } else {
+                null
             }
-            return urls.toSet()
         }
 
         override fun onPostExecute(image: Bitmap?) {
@@ -233,16 +234,43 @@ class API {
             unsetting()
         }
 
-        private fun jsonToString(jsonURL: JSONObject): String {
-            return "${jsonURL.get("API")}${jsonURL.get("search")}${jsonURL.get("categories")}${jsonURL.get("purity")}${jsonURL.get("sorting")}" +
-                    "${jsonURL.get("order")}" + "${jsonURL.get("toprange")}${jsonURL.get("atleast")}${jsonURL.get("resolutions")}${jsonURL.get("ratios")}" +
-                    "${jsonURL.get("colors")}" + "${jsonURL.get("page")}${jsonURL.get("seed")}${jsonURL.get("apikey")}"
+        private fun getFirstURL(urls: Set<String>): String {
+            val url: String = urls.first()
+            sharedPreferences!!.edit().putString("latest", "${jsonToString(jsonURL)}\n[$url]").apply()
+            val newUrls = urls.drop(1).toSet()
+            if (newUrls.isEmpty())
+                sharedPreferences!!.edit().putBoolean("updatepage", true).apply()
+            sharedPreferences!!.edit().putStringSet("urls", newUrls).apply()
+            return url
+        }
+
+        private fun updatePage(json: JSONObject, jsonURL: JSONObject) {
+            logText("Next Page")
+            val meta = json.get("meta") as JSONObject
+            val currentPage = meta.get("current_page")
+            var page = (currentPage as Int) + 1
+            val lastPage = meta.get("last_page") as Int
+            if (page > lastPage) {
+                logText("Last Page done, circling back to first")
+                page = 1
+            }
+            jsonURL.put("page", "&page=$page")
+            sharedPreferences!!.edit().putString("page", page.toString()).apply()
+        }
+
+        private fun dataToUrls(data: JSONArray): Set<String> {
+            val urls = ArrayList<String>()
+            for (i in 0 until data.length()) {
+                val obj = data.get(i) as JSONObject
+                val path = obj.get("path") as String
+                urls.add(path)
+            }
+            return urls.toSet()
         }
 
         private fun fetchJSONString(URL: String): String? {
             return try {
                 //todo throws error
-                log += "[$URL]JSON"
                 val url = URL(URL)
                 val urlConnection: HttpURLConnection = url.openConnection() as HttpURLConnection
                 urlConnection.requestMethod = "GET"
@@ -275,13 +303,13 @@ class API {
 
         private fun getIMG(uri: String): Bitmap? {
             //todo error
-            log += "[$uri]Downloading\n"
+            logText("$uri...${sharedPreferences!!.getStringSet("urls", hashSetOf())!!.size}more")
             val url = URL(uri)
             return try {
                 BitmapFactory.decodeStream(url.openConnection().getInputStream())
             } catch (e: Exception) {
                 err = e.javaClass.name
-                log += err
+                logText("$err")
                 t(err)
                 null
             }
@@ -289,7 +317,6 @@ class API {
 
         private fun setBitmap(image: Bitmap) {
             val side = max(image.width, image.height)
-
             var blurBy: Float = sharedPreferences!!.getInt("blur", 0).toFloat()
             if (blurBy == 0f)
                 blurBy = 1f
@@ -307,15 +334,18 @@ class API {
                 if (!(sharedPreferences!!.getStringSet("where", hashSetOf())!!.contains("home")
                             || sharedPreferences!!.getStringSet("where", hashSetOf())!!.contains("lock"))
                 ) {
-                    log += "[Using default home]"
+                    logText("Where not selected, using default 'HomeScreen'")
                     sharedPreferences!!.edit().putStringSet("where", hashSetOf("home")).apply()
                 }
-                MainActivity.setWallpaper(bitmap, blurred)
-                img?.setImageBitmap(bitmap)
+                Functions.SetWallpaper(bitmap, blurred).execute()
+//                img?.setImageBitmap(bitmap)
+                val scaleBy = width
+                val scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaleBy, scaleBy, false)
+                img?.setImageBitmap(scaledBitmap)
                 latestTextView!!.text = sharedPreferences!!.getString("latest", "")
             } catch (e: java.lang.Exception) {
                 e.printStackTrace()
-                log += e.javaClass.name + "\n"
+                logText("${e.javaClass.name}")
             }
         }
     }

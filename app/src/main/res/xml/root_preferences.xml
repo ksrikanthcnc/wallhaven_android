@@ -13,7 +13,7 @@
         <ListPreference
             app:entries="@array/timestext"
             app:entryValues="@array/times"
-            app:key="time"
+            app:key="refreshtime"
             app:title="Refresh Rate" />
         <SeekBarPreference
             app:key="blur"
@@ -33,17 +33,17 @@
         <MultiSelectListPreference
             app:entries="@array/categoriestext"
             app:entryValues="@array/categories"
-            app:key="categories"
+            app:key="categoriesset"
             app:title="Categories" />
         <MultiSelectListPreference
             app:entries="@array/puritytext"
             app:entryValues="@array/purity"
-            app:key="purity"
+            app:key="purityset"
             app:title="Purity" />
         <MultiSelectListPreference
             app:entries="@array/sortingtext"
             app:entryValues="@array/sorting"
-            app:key="sorting"
+            app:key="sortingset"
             app:title="Sorting (If multiple selected, one will be picked by random)" />
 
         <ListPreference

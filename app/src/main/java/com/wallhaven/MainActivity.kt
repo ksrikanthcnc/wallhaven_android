@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.text.method.ScrollingMovementMethod
+import android.util.DisplayMetrics
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
@@ -16,9 +17,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import com.wallhaven.Functions.Companion.getPerm
+import com.wallhaven.Functions.Companion.jsonToString
 import com.wallhaven.Functions.Companion.l
 import com.wallhaven.Functions.Companion.logText
 import com.wallhaven.Functions.Companion.t
+import com.wallhaven.Functions.Companion.updateUrlLog
 import com.wallhaven.MainActivity.Companion.changeWallpaper
 import java.lang.Exception
 import java.util.*
@@ -39,11 +42,12 @@ import java.util.*
 //todo If not scrollable shrink to phone dimensions
 //todo show pref in summary
 //todo canvas:trying to draw too large exception workaround:disable hardware acc
+//todo cache batch images [needed?]
 
 var run: Boolean = false
 var refreshTime: Long = 300
 var oldRefreshTime: Long = refreshTime
-var timerTime: Long = 1000
+var timerTime: Long = 100
 var starttime: Long = 0
 
 var handler: Handler = Handler()
@@ -51,19 +55,12 @@ var context: Context? = null
 var refresher: Runnable = Runnable {
     oldRefreshTime = refreshTime
     starttime = System.nanoTime()
-    try {
-        changeWallpaper()
-    } catch (e: Exception) {
-        e.printStackTrace()
-        t(e.javaClass.name)
-    }
+    changeWallpaper()
 }
 var refreshTimer: Runnable = object : Runnable {
     override fun run() {
-        urlText!!.text = "$url@($refreshTime s)[left in page:${sharedPreferences!!.getStringSet("urls", hashSetOf())!!.size}]"
         timer!!.text = (oldRefreshTime - (System.nanoTime() - starttime) / 1000000000).toString()
-//        l(timer!!.text as String)
-        logTextView!!.text = log
+        updateUrlLog()
         handler.postDelayed(this, timerTime)
     }
 }
@@ -78,48 +75,47 @@ var sharedPreferences: SharedPreferences? = null
 
 var allSet = false
 var url: String = ""
-var log: String = ""
+
+var width = -1
+var height = -1
 
 class MainActivity : AppCompatActivity() {
-//    private lateinit var wallhavenService: WallhavenService
-//    private var bound: Boolean = false
-//
-//    private val connection = object : ServiceConnection {
-//        override fun onServiceConnected(className: ComponentName, service: IBinder) {
-//            val binder = service as WallhavenService.LocalBinder
-//            wallhavenService = binder.getService()
-//            bound = true
-//        }
-//
-//        override fun onServiceDisconnected(arg0: ComponentName) {
-//            bound = false
-//        }
-//    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-//        Intent(this, WallhavenService::class.java).also { intent -> startService(intent) }
         getPerm(this)
         initVar()
         logTextView!!.movementMethod = ScrollingMovementMethod()
         img!!.setImageDrawable(wallpaperManager!!.drawable)
         latestTextView!!.text = sharedPreferences!!.getString("latest", "")
 
-        run = sharedPreferences!!.getBoolean("run", false)
-        if (run) {
-            findViewById<Button>(R.id.start).text = "(Running)STOP"
-            if (!handler.hasCallbacks(refresher))
-                handler.post(refresher)
-            if (!handler.hasCallbacks(refreshTimer))
-                handler.post(refreshTimer)
-        } else {
-            findViewById<Button>(R.id.start).text = "(Stopped)START"
-            handler.removeCallbacks(refreshTimer)
-            handler.removeCallbacks(refresher)
-        }
         allSet = true
+        logText(url)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val jsonURL = API().getURL()
+        sharedPreferences!!.edit().putString("url", jsonToString(jsonURL)).apply()
+
+        url = sharedPreferences!!.getString("url", "").toString()
+        refreshTime = sharedPreferences!!.getString("refreshtime", "300")!!.toLong()
+        val left = sharedPreferences!!.getStringSet("urls", hashSetOf())!!.size
+        urlText!!.text = "$url@${refreshTime}s[${left}left]"
+        logTextView!!.text = sharedPreferences!!.getString("log", "")
+
+        if (url != sharedPreferences!!.getString("oldurl", "")) {
+            sharedPreferences!!.edit().putString("oldurl", url).apply()
+            sharedPreferences!!.edit().putBoolean("refreshpage", true).apply()
+            logText(url)
+        }
+
+        run = sharedPreferences!!.getBoolean("run", false)
+        run = !run
+        btn(findViewById(R.id.start))
+
+        updateUrlLog()
     }
 
     private fun initVar() {
@@ -131,31 +127,29 @@ class MainActivity : AppCompatActivity() {
         timer = findViewById(R.id.timer)
         latestTextView = findViewById(R.id.latest)
         logTextView = findViewById(R.id.text)
-    }
+        logTextView!!.movementMethod = ScrollingMovementMethod()
 
-    override fun onResume() {
-        super.onResume()
-        //todo
-        log += "$url"
-        logTextView!!.text = sharedPreferences!!.getString("log", "")
-        findViewById<TextView>(R.id.url).text = "$url($refreshTime s)"
+        val displayMetrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(displayMetrics)
+        height = displayMetrics.heightPixels
+        width = displayMetrics.widthPixels
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
             1 -> {
                 if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    logText("Read Permission Given", logTextView)
+                    logText("Read Permission Given")
                 } else {
-                    logText("Read Permission Denied", logTextView)
+                    logText("Read Permission Denied")
                 }
                 return
             }
             2 -> {
                 if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                    logText("Write Permission Given", logTextView)
+                    logText("Write Permission Given")
                 } else {
-                    logText("Write Permission Denied", logTextView)
+                    logText("Write Permission Denied")
                 }
                 return
             }
@@ -165,21 +159,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        fun setWallpaper(home: Bitmap?, lock: Bitmap?) {
-            logText("Setting wallpaper", logTextView)
-            t("Wallpaper(s) updated")
-            Functions.SetWallpaper(home, lock).execute()
-        }
-
         fun changeWallpaper() {
             val jsonURL = API().getURL()
+            sharedPreferences!!.edit().putString("url", jsonToString(jsonURL)).apply()
             if (run)
                 if (isSetting) {
                     val msg = "Already applying one"
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    logText(msg, true)
+//                    t(msg)
                 } else {
-                    logText("----" + (Calendar.getInstance() as GregorianCalendar).toZonedDateTime().toLocalTime() + "----", logTextView)
-                    API().getSet(jsonURL)
+                    API.AGetSet(jsonURL).execute()
                 }
         }
     }
@@ -204,18 +193,19 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             R.id.clear -> {
-                log = ""
                 logTextView!!.text = ""
                 sharedPreferences!!.edit().putString("log", "").apply()
+                updateUrlLog()
             }
             R.id.img -> {
                 //todo download to downloads folder
             }
-//           todo
-//           R.id.listcache -> {
-//           }
             R.id.cache -> {
+                sharedPreferences!!.edit().putString("page", "1").apply()
                 sharedPreferences!!.edit().putStringSet("urls", hashSetOf()).apply()
+                sharedPreferences!!.edit().putBoolean("updatepage", false).apply()
+                logText("Cache cleared", true)
+                updateUrlLog()
 //                sharedPreferences!!.edit().putString("page", "1").apply()
                 //todo here now
             }
